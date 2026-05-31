@@ -167,7 +167,7 @@ def flash_attention_kernel(
     """
     Flash Attention forward pass.
     grid: (batch, num_heads, seq_q // block_q, seq_k // block_k).
-    m_ref, l_ref are running max/normaliser; o_acc_ref is float32 accumulator.
+    Scratch: m_ref, l_ref running max/norm (block_q,1); o_acc_ref float32 acc.
     Score matrix never written to HBM.
     """
     scale = {scale}
@@ -178,13 +178,12 @@ def flash_attention_kernel(
         l_ref[...] = jnp.zeros_like(l_ref)
         o_acc_ref[...] = jnp.zeros_like(o_acc_ref)
 
-    q = q_ref[...].astype(jnp.{accumulator_dtype})
-    k = k_ref[...].astype(jnp.{accumulator_dtype})
-    v = v_ref[...].astype(jnp.{accumulator_dtype})
+    # Slice batch/head dims → plain 2D for jnp.dot (4-D @ not supported in Pallas)
+    q = q_ref[0, 0, :, :].astype(jnp.{accumulator_dtype})   # (block_q, head_dim)
+    k = k_ref[0, 0, :, :].astype(jnp.{accumulator_dtype})   # (block_k, head_dim)
+    v = v_ref[0, 0, :, :].astype(jnp.{accumulator_dtype})   # (block_k, head_dim)
 
-    # Use @ (matmul) for 4-D batched tensors; jnp.dot on 4-D reverses all dims
-    # via .T which mismatches contraction axes.
-    s = (q @ k.transpose((0, 1, 3, 2))) * scale
+    s = jnp.dot(q, k.T, preferred_element_type=jnp.{accumulator_dtype}) * scale
     m_new = jnp.maximum(m_ref[...], jnp.max(s, axis=-1, keepdims=True))
     p = jnp.exp(s - m_new)
     l_new = jnp.exp(m_ref[...] - m_new) * l_ref[...] + jnp.sum(p, axis=-1, keepdims=True)
@@ -192,14 +191,15 @@ def flash_attention_kernel(
     # Accumulate in float32 scratch to avoid bf16 precision loss across k-tiles.
     o_acc_ref[...] = (
         jnp.exp(m_ref[...] - m_new) * o_acc_ref[...]
-        + (p @ v).astype(jnp.{accumulator_dtype})
+        + jnp.dot(p, v, preferred_element_type=jnp.{accumulator_dtype})
     )
     m_ref[...] = m_new
     l_ref[...] = l_new
 
     @pl.when(pl.program_id(3) == {num_k_tiles} - 1)
     def _finalise():
-        o_ref[...] = (o_acc_ref[...] / l_ref[...]).astype(jnp.{output_dtype})
+        result = (o_acc_ref[...] / l_ref[...]).astype(jnp.{output_dtype})
+        o_ref[...] = result[jnp.newaxis, jnp.newaxis, :, :]
 
 
 def run_flash_attention(
@@ -223,9 +223,9 @@ def run_flash_attention(
     ]
     out_specs = pl.BlockSpec((1, 1, block_q, head_dim), q_idx)
     scratch_shapes = [
-        pltpu.VMEM((1, 1, block_q, 1),        jnp.{accumulator_dtype}),   # m
-        pltpu.VMEM((1, 1, block_q, 1),        jnp.{accumulator_dtype}),   # l
-        pltpu.VMEM((1, 1, block_q, head_dim), jnp.{accumulator_dtype}),   # o_acc
+        pltpu.VMEM((block_q, 1),        jnp.{accumulator_dtype}),   # m  (block_q,1)
+        pltpu.VMEM((block_q, 1),        jnp.{accumulator_dtype}),   # l  (block_q,1)
+        pltpu.VMEM((block_q, head_dim), jnp.{accumulator_dtype}),   # o_acc
     ]
 
     return pl.pallas_call(
