@@ -15,7 +15,7 @@ class DType(str, Enum):
 
 
 class LayerSpec(BaseModel):
-    op_type: str  # "matmul" | "rmsnorm"
+    op_type: str  # "matmul" | "rmsnorm" | "fused_matmul_rmsnorm" | "flash_attention"
     M: int
     N: int
     K: int
@@ -23,6 +23,10 @@ class LayerSpec(BaseModel):
     output_dtype: DType = DType.BFLOAT16
     accumulator_dtype: DType = DType.FLOAT32
     batch_size: Optional[int] = None
+    # Attention-specific fields (None for non-attention ops)
+    seq_len: Optional[int] = None
+    num_heads: Optional[int] = None
+    head_dim: Optional[int] = None
 
 
 class HardwareLimits(BaseModel):
@@ -68,7 +72,7 @@ class KernelConfig(BaseModel):
     block_m: int
     block_n: int
     block_k: int
-    stages: int = 1
+    stages: int = 2
     input_dtype: DType
     output_dtype: DType
     accumulator_dtype: DType

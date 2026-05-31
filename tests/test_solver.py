@@ -62,3 +62,23 @@ def test_solver_raises_for_unsupported_op():
     spec = LayerSpec(op_type="attention", M=512, N=512, K=512)
     with pytest.raises(ValueError, match="Unsupported op_type"):
         TileSolver(_hw()).solve(spec)
+
+
+def test_solver_fused_matmul_rmsnorm():
+    spec = LayerSpec(op_type="fused_matmul_rmsnorm", M=8192, N=768, K=768)
+    hw = _hw()
+    config = TileSolver(hw).solve(spec)
+    assert config.block_n == 768        # N is never tiled
+    assert config.total_vmem_estimate_bytes <= hw.vmem_budget_bytes
+
+
+def test_solver_flash_attention():
+    spec = LayerSpec(
+        op_type="flash_attention", M=2048, N=2048, K=64,
+        seq_len=2048, num_heads=12, head_dim=64,
+    )
+    hw = _hw()
+    config = TileSolver(hw).solve(spec)
+    assert config.block_m > 0
+    assert config.block_k > 0
+    assert config.total_vmem_estimate_bytes <= hw.vmem_budget_bytes
