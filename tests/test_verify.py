@@ -78,3 +78,20 @@ def test_unknown_op_returns_error():
     result = VerificationGate(spec2, config, mode=VerifyMode.CPU_INTERPRET).run()
     assert not result.passed
     assert "attention" in result.error_trace
+
+
+def test_fused_matmul_rmsnorm_cpu_interpret_passes():
+    spec = LayerSpec(op_type="fused_matmul_rmsnorm", M=64, N=128, K=128)
+    config = TileSolver(HardwareLimits.for_v5e()).solve(spec)
+    result = VerificationGate(spec, config, mode=VerifyMode.CPU_INTERPRET).run()
+    assert result.passed, result.error_trace
+
+
+def test_flash_attention_cpu_interpret_passes():
+    spec = LayerSpec(
+        op_type="flash_attention", M=128, N=128, K=64,
+        seq_len=128, num_heads=1, head_dim=64,
+    )
+    config = TileSolver(HardwareLimits.for_v5e()).solve(spec)
+    result = VerificationGate(spec, config, mode=VerifyMode.CPU_INTERPRET).run()
+    assert result.passed, result.error_trace

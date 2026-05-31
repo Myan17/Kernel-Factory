@@ -102,7 +102,12 @@ class TemplateRAG:
             f"{spec.op_type} {spec.input_dtype.value} to {spec.output_dtype.value} "
             f"M={spec.M} N={spec.N} K={spec.K}"
         )
-        hits = tbl.search(_embed(query)).limit(top_k).to_list()
+        hits = (
+            tbl.search(_embed(query))
+            .where(f"op_type = '{spec.op_type}'", prefilter=True)
+            .limit(top_k)
+            .to_list()
+        )
         if not hits:
             raise RuntimeError("RAG returned no results.")
         return hits[0]["template_code"]

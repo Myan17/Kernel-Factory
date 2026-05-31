@@ -119,14 +119,119 @@ def _run_rmsnorm_cpu(
     return result, baseline
 
 
+def _run_fused_matmul_rmsnorm_cpu(
+    spec: LayerSpec, config: KernelConfig
+) -> tuple[jnp.ndarray, jnp.ndarray]:
+    import jax.experimental.pallas as pl
+
+    bm = config.block_m
+    M, N, K = spec.M, spec.N, spec.K
+    in_dt  = _jnp_dtype(spec.input_dtype)
+    out_dt = _jnp_dtype(spec.output_dtype)
+    acc_dt = _jnp_dtype(spec.accumulator_dtype)
+
+    key = jax.random.PRNGKey(2)
+    a = jax.random.normal(key,                    (M, K), dtype=in_dt)
+    b = jax.random.normal(jax.random.fold_in(key, 1), (K, N), dtype=in_dt)
+    w = jax.random.normal(jax.random.fold_in(key, 2), (N,),   dtype=in_dt)
+
+    # CPU interpret: reduce full K in one shot — no scratch/K-tiling needed.
+    # Verifies numerical correctness of the fused compute path only.
+    def kernel(a_ref, b_ref, w_ref, o_ref):
+        x   = jnp.dot(a_ref[...].astype(acc_dt), b_ref[...].astype(acc_dt),
+                       preferred_element_type=acc_dt)
+        rms = jnp.sqrt(jnp.mean(x * x, axis=-1, keepdims=True) + 1e-6)
+        o_ref[...] = ((x / rms) * w_ref[...].astype(acc_dt)).astype(out_dt)
+
+    result = pl.pallas_call(
+        kernel,
+        out_shape=jax.ShapeDtypeStruct((M, N), out_dt),
+        grid=(M // bm,),
+        in_specs=[
+            pl.BlockSpec((bm, K), lambda m: (m, 0)),
+            pl.BlockSpec((K, N),  lambda m: (0, 0)),
+            pl.BlockSpec((N,),    lambda m: (0,)),
+        ],
+        out_specs=pl.BlockSpec((bm, N), lambda m: (m, 0)),
+        interpret=True,
+    )(a, b, w)
+
+    # XLA 2-op baseline
+    matmul_out = jax.lax.dot_general(
+        a.astype(acc_dt), b.astype(acc_dt), (([1], [0]), ([], []))
+    )
+    rms = jnp.sqrt(jnp.mean(matmul_out ** 2, axis=-1, keepdims=True) + 1e-6)
+    baseline = ((matmul_out / rms) * w.astype(acc_dt)).astype(out_dt)
+
+    return result, baseline
+
+
+def _run_flash_attention_cpu(
+    spec: LayerSpec, config: KernelConfig
+) -> tuple[jnp.ndarray, jnp.ndarray]:
+    """
+    Single-batch flash attention for CPU interpret validation.
+    K is NOT tiled (avoids pltpu.VMEM which is TPU-only).
+    """
+    import jax.experimental.pallas as pl
+
+    seq    = spec.seq_len or spec.M
+    d      = spec.head_dim or spec.K
+    bq     = config.block_m
+    in_dt  = _jnp_dtype(spec.input_dtype)
+    acc_dt = _jnp_dtype(spec.accumulator_dtype)
+    out_dt = _jnp_dtype(spec.output_dtype)
+    scale  = d ** -0.5
+
+    key = jax.random.PRNGKey(3)
+    q = jax.random.normal(key,                    (seq, d), dtype=in_dt)
+    k = jax.random.normal(jax.random.fold_in(key, 1), (seq, d), dtype=in_dt)
+    v = jax.random.normal(jax.random.fold_in(key, 2), (seq, d), dtype=in_dt)
+
+    # CPU interpret: full K per Q-tile — no running-stats scratch needed.
+    def kernel(q_ref, k_ref, v_ref, o_ref):
+        q_f = q_ref[...].astype(acc_dt)
+        k_f = k_ref[...].astype(acc_dt)
+        v_f = v_ref[...].astype(acc_dt)
+        s       = jnp.dot(q_f, k_f.T) * scale
+        weights = jax.nn.softmax(s, axis=-1)
+        o_ref[...] = jnp.dot(weights, v_f).astype(out_dt)
+
+    result = pl.pallas_call(
+        kernel,
+        out_shape=jax.ShapeDtypeStruct((seq, d), out_dt),
+        grid=(seq // bq,),
+        in_specs=[
+            pl.BlockSpec((bq, d),  lambda i: (i, 0)),
+            pl.BlockSpec((seq, d), lambda i: (0, 0)),
+            pl.BlockSpec((seq, d), lambda i: (0, 0)),
+        ],
+        out_specs=pl.BlockSpec((bq, d), lambda i: (i, 0)),
+        interpret=True,
+    )(q, k, v)
+
+    # XLA baseline: standard scaled dot-product attention
+    q_f = q.astype(acc_dt)
+    k_f = k.astype(acc_dt)
+    v_f = v.astype(acc_dt)
+    scores  = jnp.dot(q_f, k_f.T) * scale
+    weights = jax.nn.softmax(scores, axis=-1)
+    baseline = jnp.dot(weights, v_f).astype(out_dt)
+
+    return result, baseline
+
+
 _CPU_RUNNERS = {
-    "matmul": _run_matmul_cpu,
-    "rmsnorm": _run_rmsnorm_cpu,
+    "matmul":               _run_matmul_cpu,
+    "rmsnorm":              _run_rmsnorm_cpu,
+    "fused_matmul_rmsnorm": _run_fused_matmul_rmsnorm_cpu,
+    "flash_attention":      _run_flash_attention_cpu,
 }
 
-# Tolerances: bfloat16 accumulation has ~1% relative error vs float32 baseline
-_ATOL = {"matmul": 1e-1, "rmsnorm": 1e-1}
-_RTOL = {"matmul": 1e-2, "rmsnorm": 1e-2}
+# Tolerances: bfloat16 accumulation has ~1% relative error vs float32 baseline.
+# Flash attention has higher tolerance due to bfloat16 softmax accumulation.
+_ATOL = {"matmul": 1e-1, "rmsnorm": 1e-1, "fused_matmul_rmsnorm": 1e-1, "flash_attention": 2e-1}
+_RTOL = {"matmul": 1e-2, "rmsnorm": 1e-2, "fused_matmul_rmsnorm": 1e-2, "flash_attention": 2e-2}
 
 
 # ── SQLite logging ─────────────────────────────────────────────────────────────
