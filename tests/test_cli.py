@@ -49,6 +49,9 @@ def test_cli_run_writes_output_file(tmp_path):
         "run", "--op", "matmul",
         "--M", "256", "--N", "256", "--K", "128",
         "--tpu", "v5e",
+        # Pin an empty corpus so assembly uses the static template deterministically,
+        # independent of any .lancedb in the working directory.
+        "--rag-path", str(tmp_path / ".lancedb"),
         "--output-file", str(out),
     ])
     assert result.exit_code == 0

@@ -14,5 +14,8 @@ src/kernel_factory.zip
 .lancedb/
 *.db
 
+# Ingested source repos
+data/
+
 # Graphify output
 graphify-out/

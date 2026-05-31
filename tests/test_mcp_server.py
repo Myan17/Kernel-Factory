@@ -68,6 +68,16 @@ def test_verify_kernel_rmsnorm_passes():
     assert result["passed"] is True
 
 
+def test_search_corpus_returns_results(tmp_path):
+    # Uses static fallback when corpus is empty
+    result = mcp_server.search_corpus(
+        query="matmul bfloat16 tpu pallas",
+        rag_path=str(tmp_path / ".lancedb"),
+    )
+    assert "results" in result
+    assert "corpus_size" in result
+
+
 def test_mcp_server_importable_without_running():
     import kernel_factory.mcp_server as srv
     assert hasattr(srv, "solve_tile_config")
