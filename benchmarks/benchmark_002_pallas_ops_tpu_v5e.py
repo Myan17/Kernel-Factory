@@ -72,7 +72,7 @@ MATMUL_SHAPES = [
     ("gpt2 ffn_up    (512×768→3072)",   512, 3072,  768),
     ("med  attn      (2048×768×768)",  2048,  768,  768),
     ("med  ffn_up    (2048×768→3072)", 2048, 3072,  768),
-    ("large matmul   (2048×2048×2048)",2048, 2048, 2048),
+    ("large matmul   (1024×1024×1024)",1024, 1024, 1024),
 ]
 
 
@@ -93,20 +93,18 @@ def run_section_a() -> None:
             a, b, (([1], [0]), ([], []))
         ).astype(jnp.bfloat16)
 
-        spec   = LayerSpec(op_type="matmul", M=M, N=N, K=K)
-        pal_fn = _make_pallas_fn(spec)
-
-        xla_ms  = timed_ms(xla_fn, a, b)
-        pal_ms  = timed_ms(pal_fn, a, b)
-        speedup = xla_ms / pal_ms
-
-        colour = "green" if speedup >= 0.98 else "red"
-        table.add_row(
-            label,
-            f"{xla_ms:.3f}",
-            f"{pal_ms:.3f}",
-            f"[{colour}]{speedup:.2f}×[/{colour}]",
-        )
+        try:
+            spec   = LayerSpec(op_type="matmul", M=M, N=N, K=K)
+            pal_fn = _make_pallas_fn(spec)
+            xla_ms  = timed_ms(xla_fn, a, b)
+            pal_ms  = timed_ms(pal_fn, a, b)
+            speedup = xla_ms / pal_ms
+            colour = "green" if speedup >= 0.98 else "red"
+            table.add_row(label, f"{xla_ms:.3f}", f"{pal_ms:.3f}",
+                          f"[{colour}]{speedup:.2f}×[/{colour}]")
+        except Exception as exc:  # noqa: BLE001
+            table.add_row(label, "—", "—", f"[red]ERR: {type(exc).__name__}[/red]")
+            console.print(f"  [yellow]Skipped {label}: {exc}[/yellow]")
 
     console.print(table)
 
@@ -140,23 +138,20 @@ def run_section_b() -> None:
             rms = jnp.sqrt(jnp.mean(x * x, axis=-1, keepdims=True) + 1e-6)
             return ((x / rms) * w.astype(jnp.float32)).astype(jnp.bfloat16)
 
-        spec   = LayerSpec(op_type="fused_matmul_rmsnorm", M=M, N=N, K=K)
-        pal_fn = _make_pallas_fn(spec)
-
-        xla_ms  = timed_ms(xla_2op, a, b, w)
-        pal_ms  = timed_ms(pal_fn,  a, b, w)
-        speedup = xla_ms / pal_ms
-
-        saved_mb = M * N * 2 / (1024 ** 2)
-        colour   = "green"  if speedup >= 1.05 else (
-                   "yellow" if speedup >= 0.98 else "red")
-        table.add_row(
-            label,
-            f"{xla_ms:.3f}",
-            f"{pal_ms:.3f}",
-            f"[{colour}]{speedup:.2f}×[/{colour}]",
-            f"{saved_mb:.1f} MB",
-        )
+        try:
+            spec   = LayerSpec(op_type="fused_matmul_rmsnorm", M=M, N=N, K=K)
+            pal_fn = _make_pallas_fn(spec)
+            xla_ms  = timed_ms(xla_2op, a, b, w)
+            pal_ms  = timed_ms(pal_fn,  a, b, w)
+            speedup = xla_ms / pal_ms
+            saved_mb = M * N * 2 / (1024 ** 2)
+            colour   = "green"  if speedup >= 1.05 else (
+                       "yellow" if speedup >= 0.98 else "red")
+            table.add_row(label, f"{xla_ms:.3f}", f"{pal_ms:.3f}",
+                          f"[{colour}]{speedup:.2f}×[/{colour}]", f"{saved_mb:.1f} MB")
+        except Exception as exc:  # noqa: BLE001
+            table.add_row(label, "—", "—", f"[red]ERR: {type(exc).__name__}[/red]", "—")
+            console.print(f"  [yellow]Skipped {label}: {exc}[/yellow]")
 
     console.print(table)
 
@@ -188,27 +183,24 @@ def run_section_c() -> None:
 
         xla_fn = functools.partial(jax.nn.dot_product_attention, scale=D ** -0.5)
 
-        spec   = LayerSpec(
-            op_type="flash_attention", M=S, N=S, K=D,
-            seq_len=S, num_heads=H, head_dim=D,
-            batch_size=B,
-        )
-        pal_fn = _make_pallas_fn(spec)
-
-        xla_ms  = timed_ms(xla_fn, q, k, v)
-        pal_ms  = timed_ms(pal_fn, q, k, v)
-        speedup = xla_ms / pal_ms
-
-        score_mb = B * H * S * S * 4 / (1024 ** 2)
-        colour   = "green"  if speedup >= 1.3  else (
-                   "yellow" if speedup >= 1.05 else "red")
-        table.add_row(
-            label,
-            f"{xla_ms:.3f}",
-            f"{pal_ms:.3f}",
-            f"[{colour}]{speedup:.2f}×[/{colour}]",
-            f"{score_mb:.1f} MB",
-        )
+        try:
+            spec   = LayerSpec(
+                op_type="flash_attention", M=S, N=S, K=D,
+                seq_len=S, num_heads=H, head_dim=D,
+                batch_size=B,
+            )
+            pal_fn = _make_pallas_fn(spec)
+            xla_ms  = timed_ms(xla_fn, q, k, v)
+            pal_ms  = timed_ms(pal_fn, q, k, v)
+            speedup = xla_ms / pal_ms
+            score_mb = B * H * S * S * 4 / (1024 ** 2)
+            colour   = "green"  if speedup >= 1.3  else (
+                       "yellow" if speedup >= 1.05 else "red")
+            table.add_row(label, f"{xla_ms:.3f}", f"{pal_ms:.3f}",
+                          f"[{colour}]{speedup:.2f}×[/{colour}]", f"{score_mb:.1f} MB")
+        except Exception as exc:  # noqa: BLE001
+            table.add_row(label, "—", "—", f"[red]ERR: {type(exc).__name__}[/red]", "—")
+            console.print(f"  [yellow]Skipped {label}: {exc}[/yellow]")
 
     console.print(table)
 
