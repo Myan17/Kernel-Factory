@@ -4,8 +4,16 @@ from kernel_factory.templates import TEMPLATES
 
 
 class Assembler:
-    def assemble(self, spec: LayerSpec, config: KernelConfig) -> str:
-        template = TEMPLATES.get(spec.op_type)
+    def assemble(
+        self,
+        spec: LayerSpec,
+        config: KernelConfig,
+        template: str | None = None,
+    ) -> str:
+        # When a template string is supplied (e.g. retrieved from RAG), use it
+        # directly. Otherwise fall back to the static verified template registry.
+        if template is None:
+            template = TEMPLATES.get(spec.op_type)
         if template is None:
             raise ValueError(f"No template registered for op_type='{spec.op_type}'")
 

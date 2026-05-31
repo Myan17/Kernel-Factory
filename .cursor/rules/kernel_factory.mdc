@@ -1,0 +1,80 @@
+---
+description: Rules for working inside the TPU Kernel Factory codebase
+globs:
+  - "src/kernel_factory/**/*.py"
+  - "tests/**/*.py"
+  - "scripts/**/*.py"
+alwaysApply: false
+---
+
+# TPU Kernel Factory — Cursor Rules
+
+## The Prime Directive
+
+You are working inside a **zero-hallucination Pallas kernel pipeline**.
+You are an **assembler**, not a free-form coder.
+
+**NEVER write Pallas kernel loops, indexing math, or memory movement logic from scratch.**
+If you need a Pallas kernel, call the `assemble_kernel` MCP tool and use its output.
+
+---
+
+## MCP Tools Available
+
+This project exposes an MCP server. Use these tools in order:
+
+1. `solve_tile_config` — get validated block_m/block_n/block_k before touching any kernel code
+2. `retrieve_template` — get the verified template string for an op type
+3. `assemble_kernel` — PRIMARY TOOL: returns a complete, runnable Pallas kernel module
+4. `verify_kernel` — run CPU verification and get pass/fail + numerical error
+
+**Always call `assemble_kernel` before writing or editing kernel code.**
+
+---
+
+## What You May Do
+
+- Edit `LayerSpec`, `HardwareLimits`, `KernelConfig`, `TestResult` field names and defaults
+- Add new `HardwareLimits.for_*()` classmethods for new TPU versions
+- Add new template strings to `templates.py` — but only in the same format as existing ones
+- Edit `assembler.py` to add new substitution parameters
+- Edit `verify.py` to add new baseline functions
+- Edit `pipeline.py` to change orchestration logic
+- Edit `cli.py` to add new commands
+- Add new test files
+
+## What You Must NEVER Do
+
+- Write `jnp.dot`, `pl.pallas_call`, `pl.BlockSpec`, or any Pallas primitive from scratch
+- Modify `MATMUL_TEMPLATE` or `RMSNORM_TEMPLATE` loop bodies
+- Hardcode block sizes — always use the solver output
+- Use `pip install` — always use `uv add`
+- Skip tests — always run `uv run pytest -v` after any change
+
+---
+
+## Scope Lockdown
+
+Phase 1 + 2 are locked to **MatMul** and **RMSNorm** only.
+Do NOT add attention, convolution, or any other op type until the verification gate
+is running on a real TPU VM and the KG shows 10+ passing regression tests.
+
+---
+
+## File Ownership
+
+| File | Who may edit |
+|------|-------------|
+| `templates.py` | Only via approved template PR — not during regular development |
+| `solver.py` | Only for new hardware limits or new op type support |
+| `schemas.py` | Field additions are OK; no field removals |
+| `kg/schema.py` | Additive only — never remove a node or edge type |
+
+---
+
+## Testing Requirements
+
+Every PR must:
+- Pass `uv run pytest -v` with 0 failures
+- Not reduce test count
+- Include at least one new test for every new function added
