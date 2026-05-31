@@ -100,9 +100,10 @@ def retrieve_template(
         if rag.is_seeded():
             try:
                 code = rag.retrieve(spec)
-                return {"template_code": code, "source": "rag", "op_type": op_type}
             except Exception:
-                pass
+                code = None
+            if code is not None:
+                return {"template_code": code, "source": "rag", "op_type": op_type}
         code = TEMPLATES.get(op_type)
         if code is None:
             return {"error": f"No template for op_type '{op_type}'", "passed": False}
