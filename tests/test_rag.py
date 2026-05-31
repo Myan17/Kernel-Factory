@@ -14,7 +14,7 @@ def seeded_rag(tmp_path):
 def test_rag_seed_returns_count(tmp_path):
     rag = TemplateRAG(db_path=tmp_path / ".lancedb")
     n = rag.seed()
-    assert n == 2  # matmul + rmsnorm
+    assert n == 4  # matmul + rmsnorm + fused_matmul_rmsnorm + flash_attention
 
 
 def test_rag_is_seeded_after_seed(tmp_path):
@@ -35,7 +35,7 @@ def test_rag_seed_force_reseeds(tmp_path):
     rag = TemplateRAG(db_path=tmp_path / ".lancedb")
     rag.seed()
     n2 = rag.seed(force=True)
-    assert n2 == 2
+    assert n2 == 4
 
 
 def test_rag_retrieve_matmul(seeded_rag):
