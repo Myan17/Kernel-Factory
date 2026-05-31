@@ -41,6 +41,7 @@ def run_matmul(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
 
     return pl.pallas_call(
         matmul_kernel,
+        out_shape=jax.ShapeDtypeStruct((M, N), jnp.{output_dtype}),
         grid=(M // block_m, N // block_n, num_k_tiles),
         in_specs=in_specs,
         out_specs=out_specs,
@@ -77,6 +78,7 @@ def run_rmsnorm(x: jnp.ndarray, w: jnp.ndarray) -> jnp.ndarray:
 
     return pl.pallas_call(
         rmsnorm_kernel,
+        out_shape=jax.ShapeDtypeStruct((M, N), jnp.{output_dtype}),
         grid=(M // block_m, N // block_n),
         in_specs=in_specs,
         out_specs=out_specs,
