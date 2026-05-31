@@ -176,14 +176,16 @@ def flash_attention_kernel(
     k = k_ref[...].astype(jnp.{accumulator_dtype})
     v = v_ref[...].astype(jnp.{accumulator_dtype})
 
-    s = jnp.dot(q, k.T, preferred_element_type=jnp.{accumulator_dtype}) * scale
+    # Use @ (matmul) for 4-D batched tensors; jnp.dot on 4-D reverses all dims
+    # via .T which mismatches contraction axes.
+    s = (q @ k.transpose((0, 1, 3, 2))) * scale
     m_new = jnp.maximum(m_ref[...], jnp.max(s, axis=-1, keepdims=True))
     p = jnp.exp(s - m_new)
     l_new = jnp.exp(m_ref[...] - m_new) * l_ref[...] + jnp.sum(p, axis=-1, keepdims=True)
 
     o_ref[...] = (
         jnp.exp(m_ref[...] - m_new) * o_ref[...]
-        + jnp.dot(p, v, preferred_element_type=jnp.{accumulator_dtype})
+        + (p @ v).astype(jnp.{accumulator_dtype})
     )
     m_ref[...] = m_new
     l_ref[...] = l_new
