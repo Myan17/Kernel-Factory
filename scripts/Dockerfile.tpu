@@ -1,0 +1,18 @@
+# Base: Google's official TPU image with jaxlib pre-built for TPU hardware.
+# Used ONLY for deploying verify.py to a TPU VM — not needed for local dev,
+# RAG ingestion, or the MCP server.
+FROM us-docker.pkg.dev/deeplearning-platform-release/gcr.io/jax-tpu.py310:latest
+
+WORKDIR /app
+
+# Copy only the self-contained verification script and its schema dependency.
+COPY src/kernel_factory/verify.py ./verify.py
+COPY src/kernel_factory/schemas.py ./schemas.py
+
+# The base image already ships jax + jaxlib[tpu] at a compatible version.
+# Uncomment to override:
+# RUN pip install --upgrade "jax[tpu]>=0.4.30" \
+#     -f https://storage.googleapis.com/jax-releases/libtpu_releases.html
+
+# Entrypoint: read a kernel spec as JSON on stdin, verify, emit JSON result.
+ENTRYPOINT ["python", "verify.py"]
