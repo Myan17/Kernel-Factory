@@ -52,7 +52,7 @@ export default function Terminal({ lines, title = "zsh — kernel-factory" }: { 
   }, [inView, reduce, lines]);
 
   return (
-    <div ref={ref} className="overflow-hidden rounded-xl2 border border-line bg-ink/[0.97] shadow-soft">
+    <div ref={ref} className="overflow-hidden rounded-xl2 border border-line bg-codebg shadow-soft">
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <span className="h-3 w-3 rounded-full bg-coral/80" />
         <span className="h-3 w-3 rounded-full bg-duck/80" />

@@ -91,7 +91,7 @@ function CliBlock() {
     }
   };
   return (
-    <div className="relative overflow-hidden rounded-xl2 border border-line bg-ink/[0.97] p-4 shadow-soft">
+    <div className="relative overflow-hidden rounded-xl2 border border-line bg-codebg p-4 shadow-soft">
       <button
         onClick={copy}
         className="absolute right-3 top-3 rounded-lg border border-white/15 px-2.5 py-1 font-mono text-[11px] text-white/70 transition hover:border-mint/60 hover:text-mint"

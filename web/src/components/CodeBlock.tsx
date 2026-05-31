@@ -45,7 +45,7 @@ export default function CodeBlock({
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border border-line bg-ink/[0.97] shadow-soft ${className}`}
+      className={`group relative overflow-hidden rounded-2xl border border-line bg-codebg shadow-soft ${className}`}
     >
       <div className="flex items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <span className="h-3 w-3 rounded-full bg-coral/80" />

@@ -74,15 +74,18 @@ export function tokenizePython(code: string): Token[] {
   return tokens;
 }
 
+// Fixed, bright-on-dark syntax colors. Code blocks always sit on a dark
+// background (bg-codebg) regardless of theme, so these must NOT depend on the
+// theme-inverting --ink/--muted vars.
 export const TOKEN_CLASS: Record<TokenType, string> = {
-  kw: "text-[rgb(var(--indigo))] font-medium",
-  builtin: "text-[rgb(var(--violet))]",
-  str: "text-[rgb(var(--mint))]",
-  num: "text-[rgb(var(--duck))]",
-  comment: "text-muted italic",
+  kw: "text-[#9d9bff] font-medium",
+  builtin: "text-[#c4a7fb]",
+  str: "text-[#5fe3a1]",
+  num: "text-[#ffce5c]",
+  comment: "text-white/40 italic",
   placeholder: "",
-  def: "text-[rgb(var(--coral))] font-medium",
-  deco: "text-[rgb(var(--coral))]",
-  punct: "text-muted",
-  plain: "text-ink/90",
+  def: "text-[#ff9b8b] font-medium",
+  deco: "text-[#ff9b8b]",
+  punct: "text-white/55",
+  plain: "text-white/85",
 };

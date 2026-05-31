@@ -15,6 +15,7 @@ export default {
         duck: "rgb(var(--duck) / <alpha-value>)",
         mint: "rgb(var(--mint) / <alpha-value>)",
         coral: "rgb(var(--coral) / <alpha-value>)",
+        codebg: "rgb(var(--code-bg) / <alpha-value>)",
       },
       fontFamily: {
         display: ['"Bricolage Grotesque"', "ui-sans-serif", "system-ui", "sans-serif"],
