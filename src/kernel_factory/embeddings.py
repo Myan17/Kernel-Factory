@@ -32,8 +32,18 @@ def _hashed_embed(text: str, dim: int = DIM) -> list[float]:
     return vec
 
 
-def _backend() -> str:
-    return os.environ.get("KF_EMBEDDING_BACKEND", "lightweight").lower()
+_ST_ALIASES = {"sentence-transformers", "st", "sentence_transformers"}
+
+
+def normalize_backend(backend: str | None) -> str:
+    """Resolve a backend name. None → env var KF_EMBEDDING_BACKEND → 'lightweight'."""
+    raw = (backend or os.environ.get("KF_EMBEDDING_BACKEND", "lightweight")).lower()
+    return "sentence-transformers" if raw in _ST_ALIASES else "lightweight"
+
+
+def active_backend() -> str:
+    """The backend the current process would use by default (env-driven)."""
+    return normalize_backend(None)
 
 
 def _load_st():
@@ -45,18 +55,18 @@ def _load_st():
     return _ST_MODEL
 
 
-def embed_texts(texts: list[str], batch_size: int = 64) -> list[list[float]]:
-    """Embed a list of texts into 384-dim vectors using the active backend."""
+def embed_texts(
+    texts: list[str], batch_size: int = 64, backend: str | None = None
+) -> list[list[float]]:
+    """Embed texts into 384-dim vectors. `backend` overrides the env default."""
     if not texts:
         return []
-    if _backend() in ("sentence-transformers", "st", "sentence_transformers"):
+    if normalize_backend(backend) == "sentence-transformers":
         model = _load_st()
-        arr = model.encode(
-            texts, batch_size=batch_size, normalize_embeddings=True
-        )
+        arr = model.encode(texts, batch_size=batch_size, normalize_embeddings=True)
         return [list(map(float, row)) for row in arr]
     return [_hashed_embed(t) for t in texts]
 
 
-def embed_one(text: str) -> list[float]:
-    return embed_texts([text])[0]
+def embed_one(text: str, backend: str | None = None) -> list[float]:
+    return embed_texts([text], backend=backend)[0]

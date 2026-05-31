@@ -21,7 +21,15 @@ from pathlib import Path
 import lancedb
 import pyarrow as pa
 
-from kernel_factory.embeddings import DIM, embed_one, embed_texts
+import json
+
+from kernel_factory.embeddings import (
+    DIM,
+    active_backend,
+    embed_one,
+    embed_texts,
+    normalize_backend,
+)
 from kernel_factory.schemas import LayerSpec
 from kernel_factory.templates import TEMPLATES
 
@@ -161,9 +169,33 @@ class ProductionRAG:
 
     def __init__(self, db_path: Path = Path(".lancedb")):
         self.db_path = Path(db_path)
+        self._meta_path = self.db_path / ".kf_meta.json"
 
     def _connect(self):
         return lancedb.connect(str(self.db_path))
+
+    def _write_backend(self, backend: str) -> None:
+        try:
+            self.db_path.mkdir(parents=True, exist_ok=True)
+            self._meta_path.write_text(json.dumps({"embedding_backend": backend}))
+        except OSError:
+            pass
+
+    def query_backend(self) -> str:
+        """Backend the corpus was embedded with (so queries stay coherent).
+
+        Falls back to the env-driven default when no corpus metadata exists.
+        """
+        try:
+            if self._meta_path.exists():
+                meta = json.loads(self._meta_path.read_text())
+                return normalize_backend(meta.get("embedding_backend"))
+        except (OSError, ValueError):
+            pass
+        return active_backend()
+
+    def embed_query(self, text: str) -> list[float]:
+        return embed_one(text, backend=self.query_backend())
 
     def _table(self):
         db = self._connect()
@@ -202,7 +234,11 @@ class ProductionRAG:
         if not fresh:
             return 0
 
-        vectors = embed_texts([_embedding_input(c) for c in fresh])
+        backend = active_backend()
+        vectors = embed_texts(
+            [_embedding_input(c) for c in fresh], backend=backend
+        )
+        self._write_backend(backend)
         rows = [
             {
                 "chunk_id": c.chunk_id,
@@ -236,7 +272,7 @@ class ProductionRAG:
         if not self.is_seeded():
             return [self._fallback_result(spec)]
         tbl = self._table()
-        search = tbl.search(embed_one(_build_query(spec)))
+        search = tbl.search(self.embed_query(_build_query(spec)))
         if kernel_class_filter is not None:
             search = search.where(
                 f"kernel_class = '{kernel_class_filter}'", prefilter=True

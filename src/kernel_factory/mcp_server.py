@@ -12,7 +12,6 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from kernel_factory.assembler import Assembler
-from kernel_factory.embeddings import embed_one
 from kernel_factory.pipeline import KernelPipeline
 from kernel_factory.rag import ProductionRAG
 from kernel_factory.schemas import DType, HardwareLimits, LayerSpec
@@ -227,7 +226,7 @@ def search_corpus(
             return {"results": [], "total_found": 0, "corpus_size": 0}
 
         tbl = rag._table()
-        search = tbl.search(embed_one(query))
+        search = tbl.search(rag.embed_query(query))
         if kernel_class:
             search = search.where(f"kernel_class = '{kernel_class}'", prefilter=True)
         hits = search.limit(top_k).to_list()
