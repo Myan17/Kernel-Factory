@@ -13,6 +13,8 @@
   --duck: 255 197 61; /* #FFC53D */
   --mint: 61 220 151; /* #3DDC97 */
   --coral: 255 107 107; /* #FF6B6B */
+  /* code/terminal surface — fixed dark in BOTH themes so syntax stays readable */
+  --code-bg: 14 15 23; /* #0E0F17 */
 }
 
 .dark {

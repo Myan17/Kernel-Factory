@@ -7,6 +7,7 @@ import Hero from "./sections/Hero";
 import Problem from "./sections/Problem";
 import LiveDemo from "./sections/LiveDemo";
 import Architecture from "./sections/Architecture";
+import Cost from "./sections/Cost";
 import KnowledgeGraph from "./sections/KnowledgeGraph";
 import Tooling from "./sections/Tooling";
 import Footer from "./sections/Footer";
@@ -28,6 +29,7 @@ export default function App() {
           <Suspense fallback={<div id="proof" className="scroll-mt-20 py-28 text-center font-mono text-sm text-muted">loading charts…</div>}>
             <Proof />
           </Suspense>
+          <Cost />
           <KnowledgeGraph />
           <Tooling />
         </main>

@@ -12,7 +12,7 @@ export default function KnowledgeGraph() {
         <SectionHeading
           eyebrow="Provenance"
           title={<>Every kernel has a <span className="text-gradient">paper trail</span></>}
-          subtitle="A Kuzu knowledge graph — 11 node types, 10 edge types — records where each spec, tile, kernel, compile, benchmark and failure came from. Hover to trace the neighborhood."
+          subtitle="A Kuzu knowledge graph — 11 node types, 10 edge types — records where each spec, tile, kernel, compile, benchmark and failure came from. It floats freely: drag any node to explore, click one to pin its neighborhood. Node size = connection count."
         />
 
         <Reveal delay={0.1}>

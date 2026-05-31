@@ -50,35 +50,34 @@ export default function Architecture() {
         />
 
         <div className="relative mt-14">
-          <div className="flex flex-col items-stretch gap-3 lg:flex-row lg:items-center">
+          <div className="flex flex-col items-stretch gap-0 lg:flex-row lg:items-stretch">
             {STAGES.map((s, i) => {
               const state = litState(i);
+              const doneBorder = s.tag === "input" ? "border-duck/50" : "border-mint/50";
               return (
-                <div key={s.key} className="flex flex-1 items-center gap-3 lg:flex-col">
+                <div key={s.key} className="contents">
                   <motion.div
                     key={`${s.key}-${runToken}`}
-                    animate={{
-                      scale: state === "active" ? 1.05 : 1,
-                    }}
+                    animate={{ y: state === "active" ? -4 : 0 }}
                     transition={{ duration: 0.3 }}
                     className={[
-                      "relative w-full rounded-xl2 border p-4 text-center transition",
+                      "relative flex flex-1 flex-col items-center justify-center rounded-xl2 border px-3 py-4 text-center transition-colors",
                       s.tag === "input"
-                        ? "bg-duck/10"
+                        ? "bg-duck/[0.07]"
                         : s.tag === "output"
-                        ? "bg-mint/10"
+                        ? "bg-mint/[0.07]"
                         : "bg-surface",
                       state === "active"
                         ? "border-indigo shadow-glow"
                         : state === "done"
-                        ? "border-mint/50"
+                        ? doneBorder
                         : "border-line",
                     ].join(" ")}
                   >
                     <div className="flex items-center justify-center gap-2">
                       {s.tag === "stage" && (
                         <span
-                          className={`grid h-5 w-5 place-items-center rounded-md font-mono text-[10px] font-bold ${
+                          className={`grid h-5 w-5 shrink-0 place-items-center rounded-md font-mono text-[10px] font-bold ${
                             state === "done"
                               ? "bg-mint/25 text-mint"
                               : state === "active"
@@ -89,24 +88,18 @@ export default function Architecture() {
                           {state === "done" ? "✓" : STAGE_TO_PIPELINE[i] + 1}
                         </span>
                       )}
-                      <div className="font-display text-sm font-bold">{s.name}</div>
+                      <div className="font-display text-sm font-bold leading-tight">{s.name}</div>
                     </div>
-                    <div className="mt-1 font-mono text-[11px] text-muted">{s.sub}</div>
+                    <div className="mt-1.5 font-mono text-[11px] leading-snug text-muted">{s.sub}</div>
                     {state === "active" && (
                       <motion.span
-                        layoutId="arch-pulse"
-                        className="absolute -top-1.5 -right-1.5 h-3 w-3 rounded-full bg-indigo"
-                        animate={{ opacity: [1, 0.3, 1] }}
+                        className="absolute right-2 top-2 h-2 w-2 rounded-full bg-indigo"
+                        animate={{ opacity: [1, 0.25, 1], scale: [1, 1.25, 1] }}
                         transition={{ duration: 1, repeat: Infinity }}
                       />
                     )}
                   </motion.div>
-                  {i < STAGES.length - 1 && (
-                    <div className="shrink-0 text-muted lg:rotate-0">
-                      <span className="hidden lg:inline">→</span>
-                      <span className="lg:hidden">↓</span>
-                    </div>
-                  )}
+                  {i < STAGES.length - 1 && <Connector active={litState(i) === "done"} />}
                 </div>
               );
             })}
@@ -121,5 +114,26 @@ export default function Architecture() {
         </div>
       </div>
     </section>
+  );
+}
+
+// A dashed connector with an arrowhead — horizontal between cards on desktop,
+// vertical between stacked cards on mobile. Lights up indigo once flow passes.
+function Connector({ active }: { active: boolean }) {
+  const color = active ? "border-indigo" : "border-line";
+  const tip = active ? "text-indigo" : "text-muted";
+  return (
+    <div className="flex shrink-0 items-center justify-center self-center py-1 lg:w-12 lg:py-0">
+      {/* mobile: vertical */}
+      <div className="flex flex-col items-center lg:hidden">
+        <span className={`h-5 border-l-2 border-dashed ${color}`} />
+        <span className={`-mt-1 text-xs leading-none ${tip}`}>▼</span>
+      </div>
+      {/* desktop: horizontal */}
+      <div className="hidden items-center lg:flex">
+        <span className={`w-7 border-t-2 border-dashed ${color}`} />
+        <span className={`-ml-1 text-sm leading-none ${tip}`}>▶</span>
+      </div>
+    </div>
   );
 }
