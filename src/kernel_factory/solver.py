@@ -9,10 +9,11 @@ _CANDIDATE_POWERS = [16, 32, 64, 128, 256, 512]
 def _vmem_matmul(bm: int, bn: int, bk: int, spec: LayerSpec) -> int:
     item = spec.input_dtype.itemsize
     acc_item = spec.accumulator_dtype.itemsize
-    a_tile   = 2 * bm * bk * item      # double-buffered
-    b_tile   = 2 * bk * bn * item      # double-buffered
+    a_tile   = 2 * bm * bk * item      # double-buffered A tiles
+    b_tile   = 2 * bk * bn * item      # double-buffered B tiles
     out_tile = bm * bn * spec.output_dtype.itemsize
-    acc_tile = bm * bn * acc_item
+    # Mosaic pipelines the accumulator with stages=2, effectively double-buffering it.
+    acc_tile = 2 * bm * bn * acc_item
     return a_tile + b_tile + out_tile + acc_tile
 
 
