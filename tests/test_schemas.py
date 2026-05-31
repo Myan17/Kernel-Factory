@@ -6,7 +6,7 @@ from kernel_factory.schemas import (
 
 def test_hardware_limits_v5e():
     hw = HardwareLimits.for_v5e()
-    assert hw.vmem_bytes == 128 * 1024 * 1024
+    assert hw.vmem_bytes == 16 * 1024 * 1024
     assert hw.vector_width == 128
     assert hw.sublane_width == 8
 
@@ -18,13 +18,13 @@ def test_hardware_limits_v4():
 
 def test_hardware_limits_v6e():
     hw = HardwareLimits.for_v6e()
-    assert hw.vmem_bytes == 128 * 1024 * 1024
+    assert hw.vmem_bytes == 16 * 1024 * 1024
     assert hw.tpu_version == "v6e"
 
 
 def test_vmem_budget_is_75_percent():
     hw = HardwareLimits.for_v5e()
-    assert hw.vmem_budget_bytes == int(128 * 1024 * 1024 * 0.75)
+    assert hw.vmem_budget_bytes == int(16 * 1024 * 1024 * 0.75)
 
 
 def test_layer_spec_defaults():
