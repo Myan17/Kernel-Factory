@@ -73,3 +73,47 @@ def test_assemble_rmsnorm_output_is_valid_python():
     spec = LayerSpec(op_type="rmsnorm", M=512, N=512, K=512)
     code = Assembler().assemble(spec, _config())
     ast.parse(code)
+
+
+def test_assemble_fused_matmul_rmsnorm_has_run_function():
+    spec = LayerSpec(op_type="fused_matmul_rmsnorm", M=8192, N=768, K=768)
+    code = Assembler().assemble(spec, _config(bm=128, bn=768, bk=256))
+    assert "run_fused_matmul_rmsnorm" in code
+    assert "fused_matmul_rmsnorm_kernel" in code
+
+
+def test_assemble_fused_rmsnorm_valid_python():
+    import ast
+    spec = LayerSpec(op_type="fused_matmul_rmsnorm", M=8192, N=768, K=768)
+    code = Assembler().assemble(spec, _config(bm=128, bn=768, bk=256))
+    ast.parse(code)
+
+
+def test_assemble_flash_attention_has_run_function():
+    spec = LayerSpec(
+        op_type="flash_attention", M=2048, N=2048, K=64,
+        seq_len=2048, num_heads=12, head_dim=64,
+    )
+    code = Assembler().assemble(spec, _config(bm=128, bn=2048, bk=128))
+    assert "run_flash_attention" in code
+    assert "flash_attention_kernel" in code
+
+
+def test_assemble_flash_attention_valid_python():
+    import ast
+    spec = LayerSpec(
+        op_type="flash_attention", M=2048, N=2048, K=64,
+        seq_len=2048, num_heads=12, head_dim=64,
+    )
+    code = Assembler().assemble(spec, _config(bm=128, bn=2048, bk=128))
+    ast.parse(code)
+
+
+def test_assemble_flash_attention_injects_scale():
+    spec = LayerSpec(
+        op_type="flash_attention", M=2048, N=2048, K=64,
+        seq_len=2048, num_heads=12, head_dim=64,
+    )
+    code = Assembler().assemble(spec, _config(bm=128, bn=2048, bk=128))
+    # scale = head_dim^-0.5 = 64^-0.5 = 0.125
+    assert "0.125" in code

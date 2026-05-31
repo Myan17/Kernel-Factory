@@ -17,7 +17,17 @@ class Assembler:
         if template is None:
             raise ValueError(f"No template registered for op_type='{spec.op_type}'")
 
-        num_k_tiles = max(1, spec.K // config.block_k) if spec.op_type == "matmul" else 1
+        if spec.op_type == "flash_attention":
+            num_k_tiles = max(1, (spec.seq_len or spec.K) // config.block_k)
+        elif spec.op_type == "matmul":
+            num_k_tiles = max(1, spec.K // config.block_k)
+        elif spec.op_type == "fused_matmul_rmsnorm":
+            num_k_tiles = max(1, spec.K // config.block_k)
+        else:
+            num_k_tiles = 1
+
+        head_dim = spec.head_dim or spec.K
+        scale = round(head_dim ** -0.5, 6)
 
         # Targeted placeholder substitution rather than str.format(): RAG-retrieved
         # templates may be real kernel code containing literal braces (dicts,
@@ -34,6 +44,7 @@ class Assembler:
             "{output_dtype}": config.output_dtype.value,
             "{accumulator_dtype}": config.accumulator_dtype.value,
             "{num_k_tiles}": str(num_k_tiles),
+            "{scale}": str(scale),
         }
         out = template
         for placeholder, value in replacements.items():
