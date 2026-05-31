@@ -12,6 +12,7 @@ from pathlib import Path
 from fastmcp import FastMCP
 
 from kernel_factory.assembler import Assembler
+from kernel_factory.embeddings import embed_one
 from kernel_factory.pipeline import KernelPipeline
 from kernel_factory.rag import ProductionRAG
 from kernel_factory.schemas import DType, HardwareLimits, LayerSpec
@@ -193,11 +194,72 @@ def verify_kernel(
         return {"error": str(exc), "passed": False}
 
 
+def search_corpus(
+    query: str,
+    kernel_class: str | None = None,
+    top_k: int = 5,
+    rag_path: str = ".lancedb",
+) -> dict:
+    """
+    Search the production RAG corpus for Pallas kernel code matching a free-text
+    query. Use this to explore patterns, find similar kernels, or see how an
+    operation is commonly implemented in production TPU code.
+
+    Args:
+        query: Natural-language or code description, e.g.
+               "matmul with bfloat16 and float32 accumulation",
+               "RMSNorm with VMEM scratch buffer",
+               "flash attention with causal mask".
+        kernel_class: Optional filter — matmul, attention, norm, elementwise,
+               collective, moe, recurrence.
+        top_k: Number of results (default 5, capped at 10).
+        rag_path: Path to the LanceDB store (default ".lancedb").
+
+    Returns {"results": [...], "total_found": int, "corpus_size": int}.
+    Each result has rank, function_name, source_repo, source_file, kernel_class,
+    op_type, tags, chunk_text, tier.
+    """
+    try:
+        top_k = max(1, min(int(top_k), 10))
+        rag = ProductionRAG(db_path=Path(rag_path))
+        corpus_size = rag.count()
+        if corpus_size == 0:
+            return {"results": [], "total_found": 0, "corpus_size": 0}
+
+        tbl = rag._table()
+        search = tbl.search(embed_one(query))
+        if kernel_class:
+            search = search.where(f"kernel_class = '{kernel_class}'", prefilter=True)
+        hits = search.limit(top_k).to_list()
+
+        results = []
+        for rank, h in enumerate(hits, start=1):
+            results.append({
+                "rank": rank,
+                "function_name": h.get("function_name"),
+                "source_repo": h.get("source_repo"),
+                "source_file": h.get("source_file"),
+                "kernel_class": h.get("kernel_class"),
+                "op_type": h.get("op_type"),
+                "tags": list(h.get("tags") or []),
+                "chunk_text": h.get("chunk_text"),
+                "tier": h.get("tier"),
+            })
+        return {
+            "results": results,
+            "total_found": len(results),
+            "corpus_size": corpus_size,
+        }
+    except Exception as exc:
+        return {"error": str(exc), "results": [], "corpus_size": 0}
+
+
 mcp = FastMCP("kernel-factory")
 mcp.tool(solve_tile_config)
 mcp.tool(retrieve_template)
 mcp.tool(assemble_kernel)
 mcp.tool(verify_kernel)
+mcp.tool(search_corpus)
 
 
 if __name__ == "__main__":
