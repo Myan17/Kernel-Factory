@@ -7,7 +7,7 @@ MATMUL_TEMPLATE = '''\
 import jax
 import jax.numpy as jnp
 import jax.experimental.pallas as pl
-import jax.experimental.pallas.ops.tpu as pltpu
+import jax.experimental.pallas.tpu as pltpu
 
 def matmul_kernel(a_ref, b_ref, o_ref, acc_ref):
     """Dense MatMul Pallas kernel — template-generated, do not edit by hand."""
@@ -87,7 +87,7 @@ FUSED_MATMUL_RMSNORM_TEMPLATE = '''\
 import jax
 import jax.numpy as jnp
 import jax.experimental.pallas as pl
-import jax.experimental.pallas.ops.tpu as pltpu
+import jax.experimental.pallas.tpu as pltpu
 
 _EPS = 1e-6
 
@@ -150,7 +150,7 @@ FLASH_ATTENTION_TEMPLATE = '''\
 import jax
 import jax.numpy as jnp
 import jax.experimental.pallas as pl
-import jax.experimental.pallas.ops.tpu as pltpu
+import jax.experimental.pallas.tpu as pltpu
 
 def flash_attention_kernel(
     q_ref, k_ref, v_ref, o_ref,
