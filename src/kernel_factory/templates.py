@@ -47,7 +47,7 @@ def run_matmul(a: jnp.ndarray, b: jnp.ndarray) -> jnp.ndarray:
         out_specs=out_specs,
         scratch_shapes=scratch_shapes,
         compiler_params=pltpu.TPUCompilerParams(
-            dimension_semantics=("parallel", "parallel", "arbitrary"),
+            dimension_semantics=("parallel", "arbitrary", "arbitrary"),
         ),
     )(a, b)
 '''
