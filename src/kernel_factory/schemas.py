@@ -42,7 +42,7 @@ class HardwareLimits(BaseModel):
     def for_v5e(cls) -> HardwareLimits:
         return cls(
             tpu_version="v5e",
-            vmem_bytes=128 * 1024 * 1024,  # 128 MiB per TensorCore
+            vmem_bytes=16 * 1024 * 1024,   # 16 MiB scoped VMEM per TensorCore (v5litepod)
             hbm_bandwidth_gbps=819.2,
         )
 
@@ -58,7 +58,7 @@ class HardwareLimits(BaseModel):
     def for_v6e(cls) -> HardwareLimits:
         return cls(
             tpu_version="v6e",
-            vmem_bytes=128 * 1024 * 1024,  # 128 MiB per TensorCore
+            vmem_bytes=16 * 1024 * 1024,   # 16 MiB scoped VMEM per TensorCore
             hbm_bandwidth_gbps=1638.4,
         )
 
