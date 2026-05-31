@@ -98,6 +98,7 @@ def fused_matmul_rmsnorm_kernel(a_ref, b_ref, w_ref, o_ref, acc_ref):
     Fused MatMul + RMSNorm.
     K is tiled (program_id 1). N is NOT tiled — the full output row
     accumulates in acc_ref so RMSNorm can see it in one pass.
+    w_ref is passed as (block_m, N) to avoid Mosaic 1-D tiling constraints.
     """
     @pl.when(pl.program_id(1) == 0)
     def _init():
@@ -127,10 +128,15 @@ def run_fused_matmul_rmsnorm(
     block_m, block_k = {block_m}, {block_k}
     num_k_tiles = {num_k_tiles}
 
+    # Broadcast the 1-D weight to (block_m, N) so Mosaic sees a native 2-D
+    # (8, 128)-aligned tensor instead of a 1-D vector (which causes a
+    # "Unsupported tiling change" error in the Mosaic compiler).
+    w_2d = jnp.broadcast_to(w[None, :], (block_m, N))
+
     in_specs = [
         pl.BlockSpec((block_m, block_k), lambda m, k: (m, k)),
         pl.BlockSpec((block_k, N),       lambda m, k: (k, 0)),
-        pl.BlockSpec((N,),               lambda m, k: (0,)),
+        pl.BlockSpec((block_m, N),       lambda m, k: (0, 0)),
     ]
     out_specs    = pl.BlockSpec((block_m, N), lambda m, k: (m, 0))
     scratch_shapes = [pltpu.VMEM((block_m, N), jnp.{accumulator_dtype})]
@@ -145,7 +151,7 @@ def run_fused_matmul_rmsnorm(
         compiler_params=pltpu.TPUCompilerParams(
             dimension_semantics=("parallel", "arbitrary"),
         ),
-    )(a, b, w)
+    )(a, b, w_2d)
 '''
 
 FLASH_ATTENTION_TEMPLATE = '''\
@@ -156,12 +162,12 @@ import jax.experimental.pallas.tpu as pltpu
 
 def flash_attention_kernel(
     q_ref, k_ref, v_ref, o_ref,
-    m_ref, l_ref,
+    m_ref, l_ref, o_acc_ref,
 ):
     """
     Flash Attention forward pass.
     grid: (batch, num_heads, seq_q // block_q, seq_k // block_k).
-    m_ref and l_ref are running max and normaliser (scratch).
+    m_ref, l_ref are running max/normaliser; o_acc_ref is float32 accumulator.
     Score matrix never written to HBM.
     """
     scale = {scale}
@@ -170,7 +176,7 @@ def flash_attention_kernel(
     def _init():
         m_ref[...] = jnp.full_like(m_ref, -jnp.inf)
         l_ref[...] = jnp.zeros_like(l_ref)
-        o_ref[...] = jnp.zeros_like(o_ref)
+        o_acc_ref[...] = jnp.zeros_like(o_acc_ref)
 
     q = q_ref[...].astype(jnp.{accumulator_dtype})
     k = k_ref[...].astype(jnp.{accumulator_dtype})
@@ -183,8 +189,9 @@ def flash_attention_kernel(
     p = jnp.exp(s - m_new)
     l_new = jnp.exp(m_ref[...] - m_new) * l_ref[...] + jnp.sum(p, axis=-1, keepdims=True)
 
-    o_ref[...] = (
-        jnp.exp(m_ref[...] - m_new) * o_ref[...]
+    # Accumulate in float32 scratch to avoid bf16 precision loss across k-tiles.
+    o_acc_ref[...] = (
+        jnp.exp(m_ref[...] - m_new) * o_acc_ref[...]
         + (p @ v).astype(jnp.{accumulator_dtype})
     )
     m_ref[...] = m_new
@@ -192,7 +199,7 @@ def flash_attention_kernel(
 
     @pl.when(pl.program_id(3) == {num_k_tiles} - 1)
     def _finalise():
-        o_ref[...] = (o_ref[...] / l_ref[...]).astype(jnp.{output_dtype})
+        o_ref[...] = (o_acc_ref[...] / l_ref[...]).astype(jnp.{output_dtype})
 
 
 def run_flash_attention(
@@ -216,8 +223,9 @@ def run_flash_attention(
     ]
     out_specs = pl.BlockSpec((1, 1, block_q, head_dim), q_idx)
     scratch_shapes = [
-        pltpu.VMEM((1, 1, block_q, 1), jnp.{accumulator_dtype}),   # m
-        pltpu.VMEM((1, 1, block_q, 1), jnp.{accumulator_dtype}),   # l
+        pltpu.VMEM((1, 1, block_q, 1),        jnp.{accumulator_dtype}),   # m
+        pltpu.VMEM((1, 1, block_q, 1),        jnp.{accumulator_dtype}),   # l
+        pltpu.VMEM((1, 1, block_q, head_dim), jnp.{accumulator_dtype}),   # o_acc
     ]
 
     return pl.pallas_call(

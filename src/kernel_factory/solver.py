@@ -29,6 +29,7 @@ def _vmem_fused_matmul_rmsnorm(bm: int, bk: int, spec: LayerSpec) -> int:
     """
     Fused kernel keeps full N rows in VMEM for normalisation.
     A is double-buffered over K. B is double-buffered over K.
+    Weight is broadcast to (bm, N) 2D to satisfy Mosaic tiling constraints.
     """
     N = spec.N
     item = spec.input_dtype.itemsize
@@ -36,7 +37,7 @@ def _vmem_fused_matmul_rmsnorm(bm: int, bk: int, spec: LayerSpec) -> int:
     a_tile   = 2 * bm * bk * item      # double-buffered
     b_tile   = 2 * bk * N  * item      # double-buffered; full N width
     acc      = bm * N * acc_item        # full output row accumulator
-    w_tile   = N * item                 # RMSNorm weight vector
+    w_tile   = bm * N * item            # weight broadcast to (bm, N)
     out_tile = bm * N * spec.output_dtype.itemsize
     return a_tile + b_tile + acc + w_tile + out_tile
 
