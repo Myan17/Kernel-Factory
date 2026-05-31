@@ -71,7 +71,7 @@ class KernelPipeline:
     def _resolve_template(self, spec: LayerSpec) -> tuple[str | None, str]:
         if self.rag is not None:
             try:
-                return self.rag.retrieve(spec), "rag"
+                return self.rag.retrieve_one(spec), "rag"
             except Exception as exc:  # RAG not seeded / unavailable
                 log.warning("RAG retrieve failed (%s); using static template", exc)
         return TEMPLATES.get(spec.op_type), "static_fallback"

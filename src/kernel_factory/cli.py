@@ -10,7 +10,7 @@ from rich.table import Table
 
 from kernel_factory.assembler import Assembler
 from kernel_factory.pipeline import KernelPipeline
-from kernel_factory.rag import TemplateRAG
+from kernel_factory.rag import ProductionRAG, TemplateRAG
 from kernel_factory.schemas import DType, HardwareLimits, LayerSpec
 from kernel_factory.solver import TileSolver
 
@@ -61,18 +61,19 @@ def run(
     output_dtype: str = typer.Option("bfloat16", "--output-dtype"),
     accum_dtype: str = typer.Option("float32", "--accum-dtype"),
     db_path: Optional[Path] = typer.Option(None, "--db-path", help="SQLite results path"),
-    rag_path: Optional[Path] = typer.Option(None, "--rag-path", help="LanceDB store path"),
+    rag_path: Path = typer.Option(Path(".lancedb"), "--rag-path", help="LanceDB corpus path"),
     output_file: Optional[Path] = typer.Option(None, "--output-file", help="Write kernel code here"),
 ):
     """Solve + assemble + verify, then print a result table."""
     hw = _validate(op, tpu)
     spec = _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype)
 
+    # Use the production corpus if it has been ingested; otherwise fall back to
+    # static templates inside the pipeline.
     rag = None
-    if rag_path is not None:
-        candidate = TemplateRAG(db_path=rag_path)
-        if candidate.is_seeded():
-            rag = candidate
+    candidate = ProductionRAG(db_path=rag_path)
+    if candidate.is_seeded():
+        rag = candidate
 
     try:
         result = KernelPipeline(hw=hw, rag=rag, db_path=db_path).run(spec)

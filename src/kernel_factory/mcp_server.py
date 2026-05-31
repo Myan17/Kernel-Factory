@@ -13,7 +13,7 @@ from fastmcp import FastMCP
 
 from kernel_factory.assembler import Assembler
 from kernel_factory.pipeline import KernelPipeline
-from kernel_factory.rag import TemplateRAG
+from kernel_factory.rag import ProductionRAG
 from kernel_factory.schemas import DType, HardwareLimits, LayerSpec
 from kernel_factory.solver import TileSolver
 from kernel_factory.templates import TEMPLATES
@@ -96,10 +96,10 @@ def retrieve_template(
     """
     try:
         spec = _spec(op_type, M, N, K, "bfloat16", "bfloat16", "float32")
-        rag = TemplateRAG(db_path=Path(rag_path))
+        rag = ProductionRAG(db_path=Path(rag_path))
         if rag.is_seeded():
             try:
-                code = rag.retrieve(spec)
+                code = rag.retrieve_one(spec)
             except Exception:
                 code = None
             if code is not None:
@@ -140,10 +140,10 @@ def assemble_kernel(
 
         template = None
         template_source = "static_fallback"
-        rag = TemplateRAG(db_path=Path(rag_path))
+        rag = ProductionRAG(db_path=Path(rag_path))
         if rag.is_seeded():
             try:
-                template = rag.retrieve(spec)
+                template = rag.retrieve_one(spec)
                 template_source = "rag"
             except Exception:
                 template = None
