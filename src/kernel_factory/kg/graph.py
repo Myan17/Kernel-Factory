@@ -37,6 +37,13 @@ class KernelFactoryKG:
             {"name": name, "op_type": op_type, "tpl": template_str, "v": verified},
         )
 
+    def upsert_generated_kernel(self, kernel_id: str, code: str, created_at: str):
+        self._conn.execute(
+            "MERGE (g:GeneratedKernel {kernel_id: $id}) "
+            "SET g.code = $code, g.created_at = $ts",
+            {"id": kernel_id, "code": code, "ts": created_at},
+        )
+
     def upsert_hardware_limits(
         self, tpu_version: str, vmem_bytes: int, vector_width: int, sublane_width: int
     ):
