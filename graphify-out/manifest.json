@@ -1,0 +1,77 @@
+{
+  "/Users/myangupta/Downloads/QuackHack/tests/test_verify.py": {
+    "mtime": 1780184888.7778752,
+    "ast_hash": "a929f1c1cf50132707921335038abe19",
+    "semantic_hash": "a929f1c1cf50132707921335038abe19"
+  },
+  "/Users/myangupta/Downloads/QuackHack/tests/test_solver.py": {
+    "mtime": 1780184286.785229,
+    "ast_hash": "b9ef2e758ff781fe8d4944775be25fdc",
+    "semantic_hash": "b9ef2e758ff781fe8d4944775be25fdc"
+  },
+  "/Users/myangupta/Downloads/QuackHack/tests/test_schemas.py": {
+    "mtime": 1780181503.4928207,
+    "ast_hash": "d9eec01cbbecccd4b40007b763915b6a",
+    "semantic_hash": "d9eec01cbbecccd4b40007b763915b6a"
+  },
+  "/Users/myangupta/Downloads/QuackHack/tests/test_assembler.py": {
+    "mtime": 1780184686.178604,
+    "ast_hash": "a8f7df74e01a42530bef7cdd246891a5",
+    "semantic_hash": "a8f7df74e01a42530bef7cdd246891a5"
+  },
+  "/Users/myangupta/Downloads/QuackHack/tests/test_kg.py": {
+    "mtime": 1780184234.3724656,
+    "ast_hash": "6a170a616b2b34db3b7217d2a8860459",
+    "semantic_hash": "6a170a616b2b34db3b7217d2a8860459"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/solver.py": {
+    "mtime": 1780184586.6580937,
+    "ast_hash": "dd90dfcdc92664fc5dd3479772748b9a",
+    "semantic_hash": "dd90dfcdc92664fc5dd3479772748b9a"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/__init__.py": {
+    "mtime": 1780181304.8659937,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/assembler.py": {
+    "mtime": 1780184642.293689,
+    "ast_hash": "d6be20ffe37694462ad052a6e5e06758",
+    "semantic_hash": "d6be20ffe37694462ad052a6e5e06758"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/templates.py": {
+    "mtime": 1780184638.080818,
+    "ast_hash": "36f9e9c5d771820b790cc04e2f8574d0",
+    "semantic_hash": "36f9e9c5d771820b790cc04e2f8574d0"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/schemas.py": {
+    "mtime": 1780181309.480711,
+    "ast_hash": "2462b7fe242a043deb65676ae05008a8",
+    "semantic_hash": "2462b7fe242a043deb65676ae05008a8"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/verify.py": {
+    "mtime": 1780185005.7925215,
+    "ast_hash": "2d1f9a85c343388c4e9c6a8cee613fbb",
+    "semantic_hash": "2d1f9a85c343388c4e9c6a8cee613fbb"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/kg/graph.py": {
+    "mtime": 1780184203.7750857,
+    "ast_hash": "bf003a6ecb1fa42ca18059fd4db66ea0",
+    "semantic_hash": "bf003a6ecb1fa42ca18059fd4db66ea0"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/kg/__init__.py": {
+    "mtime": 1780184182.4115489,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "/Users/myangupta/Downloads/QuackHack/src/kernel_factory/kg/schema.py": {
+    "mtime": 1780184193.8092055,
+    "ast_hash": "c5e06727bb4a3d1c220c8d91fb4796bf",
+    "semantic_hash": "c5e06727bb4a3d1c220c8d91fb4796bf"
+  },
+  "/Users/myangupta/Downloads/QuackHack/docs/superpowers/plans/2026-05-30-tpu-kernel-factory.md": {
+    "mtime": 1780181263.9299488,
+    "ast_hash": "31c2ef01f9fdebde87b71ac901e4f40b",
+    "semantic_hash": "31c2ef01f9fdebde87b71ac901e4f40b"
+  }
+}
