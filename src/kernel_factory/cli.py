@@ -22,7 +22,7 @@ _HW = {
     "v5e": HardwareLimits.for_v5e,
     "v6e": HardwareLimits.for_v6e,
 }
-_SUPPORTED_OPS = {"matmul", "rmsnorm"}
+_SUPPORTED_OPS = {"matmul", "rmsnorm", "fused_matmul_rmsnorm", "flash_attention"}
 
 
 def _validate(op: str, tpu: str) -> HardwareLimits:
@@ -41,18 +41,22 @@ def _validate(op: str, tpu: str) -> HardwareLimits:
     return _HW[tpu]()
 
 
-def _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype) -> LayerSpec:
+def _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype,
+          seq_len=None, num_heads=None, head_dim=None) -> LayerSpec:
     return LayerSpec(
         op_type=op, M=M, N=N, K=K,
         input_dtype=DType(input_dtype),
         output_dtype=DType(output_dtype),
         accumulator_dtype=DType(accum_dtype),
+        seq_len=seq_len,
+        num_heads=num_heads,
+        head_dim=head_dim,
     )
 
 
 @app.command()
 def run(
-    op: str = typer.Option(..., "--op", help="matmul | rmsnorm"),
+    op: str = typer.Option(..., "--op", help="matmul | rmsnorm | fused_matmul_rmsnorm | flash_attention"),
     M: int = typer.Option(..., "--M"),
     N: int = typer.Option(..., "--N"),
     K: int = typer.Option(..., "--K"),
@@ -63,10 +67,14 @@ def run(
     db_path: Optional[Path] = typer.Option(None, "--db-path", help="SQLite results path"),
     rag_path: Path = typer.Option(Path(".lancedb"), "--rag-path", help="LanceDB corpus path"),
     output_file: Optional[Path] = typer.Option(None, "--output-file", help="Write kernel code here"),
+    seq_len: Optional[int] = typer.Option(None, "--seq-len", help="Sequence length (flash_attention)"),
+    num_heads: Optional[int] = typer.Option(None, "--num-heads", help="Number of heads (flash_attention)"),
+    head_dim: Optional[int] = typer.Option(None, "--head-dim", help="Head dimension (flash_attention)"),
 ):
     """Solve + assemble + verify, then print a result table."""
     hw = _validate(op, tpu)
-    spec = _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype)
+    spec = _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype,
+                 seq_len=seq_len, num_heads=num_heads, head_dim=head_dim)
 
     # Use the production corpus if it has been ingested; otherwise fall back to
     # static templates inside the pipeline.
@@ -110,7 +118,7 @@ def run(
 
 @app.command()
 def inspect(
-    op: str = typer.Option(..., "--op", help="matmul | rmsnorm"),
+    op: str = typer.Option(..., "--op", help="matmul | rmsnorm | fused_matmul_rmsnorm | flash_attention"),
     M: int = typer.Option(..., "--M"),
     N: int = typer.Option(..., "--N"),
     K: int = typer.Option(..., "--K"),
@@ -118,10 +126,14 @@ def inspect(
     input_dtype: str = typer.Option("bfloat16", "--input-dtype"),
     output_dtype: str = typer.Option("bfloat16", "--output-dtype"),
     accum_dtype: str = typer.Option("float32", "--accum-dtype"),
+    seq_len: Optional[int] = typer.Option(None, "--seq-len"),
+    num_heads: Optional[int] = typer.Option(None, "--num-heads"),
+    head_dim: Optional[int] = typer.Option(None, "--head-dim"),
 ):
     """Dry run: show the solver's tile choice and an assembled-code preview (no verify)."""
     hw = _validate(op, tpu)
-    spec = _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype)
+    spec = _spec(op, M, N, K, input_dtype, output_dtype, accum_dtype,
+                 seq_len=seq_len, num_heads=num_heads, head_dim=head_dim)
 
     try:
         cfg = TileSolver(hw).solve(spec)
