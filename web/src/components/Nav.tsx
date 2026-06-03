@@ -11,7 +11,7 @@ const LINKS = [
   { href: "#tooling", label: "Tooling" },
 ];
 
-const REPO = "https://github.com/Myan17/QuackHacks";
+const REPO = "https://github.com/Myan17/Kernel-Factory";
 
 export default function Nav() {
   const { theme, toggle } = useTheme();
