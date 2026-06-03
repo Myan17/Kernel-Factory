@@ -1,5 +1,5 @@
 const STACK = ["JAX / Pallas", "Pydantic", "Kuzu", "LanceDB", "FastMCP", "Typer", "SQLite"];
-const REPO = "https://github.com/Myan17/QuackHacks";
+const REPO = "https://github.com/Myan17/Kernel-Factory";
 
 export default function Footer() {
   return (

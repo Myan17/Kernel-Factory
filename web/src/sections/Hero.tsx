@@ -4,7 +4,7 @@ import TileField from "../components/TileField";
 import { HEADLINE } from "../lib/benchmarks";
 
 const STAGES = ["Solve", "Retrieve", "Assemble", "Verify"];
-const REPO = "https://github.com/Myan17/QuackHacks";
+const REPO = "https://github.com/Myan17/Kernel-Factory";
 
 function PipelineTyper() {
   const reduce = useReducedMotion();
