@@ -72,6 +72,35 @@ def test_solver_fused_matmul_rmsnorm():
     assert config.total_vmem_estimate_bytes <= hw.vmem_budget_bytes
 
 
+@pytest.mark.parametrize(
+    "M,N,K",
+    [
+        (512, 768, 768),
+        (512, 3072, 768),
+        (512, 768, 3072),
+        (1000, 768, 768),   # regression: block_k=512 used to leave a partial 768%512 tile
+        (1024, 1024, 512),
+        (4096, 4096, 2048),
+        (8192, 768, 768),
+    ],
+)
+def test_solver_blocks_divide_dimensions_evenly(M, N, K):
+    """Every tile must evenly divide its dimension — a partial tile reads past
+    the array bound and silently produces wrong results."""
+    spec = LayerSpec(op_type="matmul", M=M, N=N, K=K)
+    config = TileSolver(_hw()).solve(spec)
+    assert M % config.block_m == 0, f"M={M} not divisible by block_m={config.block_m}"
+    assert N % config.block_n == 0, f"N={N} not divisible by block_n={config.block_n}"
+    assert K % config.block_k == 0, f"K={K} not divisible by block_k={config.block_k}"
+
+
+def test_solver_rmsnorm_blocks_divide_dimensions():
+    spec = LayerSpec(op_type="rmsnorm", M=1000, N=768, K=768)
+    config = TileSolver(_hw()).solve(spec)
+    assert spec.M % config.block_m == 0
+    assert spec.N % config.block_n == 0
+
+
 def test_solver_flash_attention():
     spec = LayerSpec(
         op_type="flash_attention", M=2048, N=2048, K=64,

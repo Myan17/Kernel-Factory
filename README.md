@@ -690,8 +690,8 @@ Discovered during the benchmark run:
 
 ### Solver limitations
 
-- Only considers powers of 2 up to 512 for block sizes. Non-power-of-2 shapes (e.g. N=768) use the largest power-of-2 divisor.
-- Does not currently verify that `M % block_m == 0` — user must ensure M is divisible.
+- Only considers powers of 2 up to 512 for block sizes (plus the full dimension). Non-power-of-2 shapes (e.g. N=768) use the largest *evenly-dividing* power-of-2 block, or the full dimension.
+- The solver now guarantees every tile evenly divides its dimension (`M % block_m == 0`, `N % block_n == 0`, `K % block_k == 0`), so no partial tiles are ever emitted.
 - Kuzu KG logging is wired but not connected in the CLI (passes `kg=None`).
 
 ---

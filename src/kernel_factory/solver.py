@@ -83,8 +83,16 @@ class TileSolver:
             raise ValueError(f"Unsupported op_type: '{spec.op_type}'")
 
     def _candidates(self, dim: int, must_align_to: int) -> list[int]:
-        # A block equal to the full array dimension is always valid (TPU spec exception).
-        result = [p for p in _CANDIDATE_POWERS if p <= dim and _aligned(p, must_align_to)]
+        # A block must (a) fit within the dimension, (b) satisfy the hardware
+        # alignment for its axis, and (c) divide the dimension evenly. Condition
+        # (c) is critical for correctness: a block that leaves a partial tile
+        # (e.g. block_k=512 for K=768) makes the grid read past the array bound
+        # and silently produces wrong results. The full dimension always divides
+        # itself, so this list is never empty.
+        result = [
+            p for p in _CANDIDATE_POWERS
+            if p <= dim and _aligned(p, must_align_to) and _aligned(dim, p)
+        ]
         if dim not in result:
             result.append(dim)
         return sorted(result)
