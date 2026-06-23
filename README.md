@@ -694,6 +694,10 @@ Discovered during the benchmark run:
 - The solver now guarantees every tile evenly divides its dimension (`M % block_m == 0`, `N % block_n == 0`, `K % block_k == 0`), so no partial tiles are ever emitted.
 - Kuzu KG logging is wired but not connected in the CLI (passes `kg=None`).
 
+See [`ROADMAP.md`](ROADMAP.md) for the full list of planned work — new op
+coverage (int8, MoE, causal/decode attention, SwiGLU), solver autotuning,
+on-TPU CI verification, and closed-loop KG auto-repair.
+
 ---
 
 ## Dependencies
