@@ -47,4 +47,4 @@ jobs:
       - name: Run test suite
         env:
           PYTHONUTF8: "1"
-        run: uv run pytest tests/ -v --cov=src/kernel_factory --cov-report=term-missing
+        run: uv run pytest tests/ -v --cov=src/kernel_factory --cov-report=term-missing --cov-fail-under=85

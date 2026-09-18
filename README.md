@@ -22,7 +22,7 @@ VerificationGate ── numerical check against JAX baseline + SQLite log
 kernel_NNN_<model>_<op>.py   ← self-contained, copy-paste ready
 ```
 
-Tested on **Google Cloud TPU v5e** (JAX 0.6.2). 92 unit tests passing.
+Tested on **Google Cloud TPU v5e** (JAX 0.6.2). 109 unit tests, 88% coverage, gated in CI.
 
 ---
 
@@ -475,7 +475,12 @@ print(run_matmul(a, b).shape)
 
 ## 9. Benchmark results
 
-Full report: [`benchmarks/benchmark_001_gpt2_small_tpu_v5e.md`](benchmarks/benchmark_001_gpt2_small_tpu_v5e.md)
+Two runs on real hardware, both reports committed:
+
+- [`benchmark_001_gpt2_small_tpu_v5e.md`](benchmarks/benchmark_001_gpt2_small_tpu_v5e.md) — GPT-2 small layer shapes (table below)
+- [`benchmark_002_pallas_ops_tpu_v5e.md`](benchmarks/results/benchmark_002_pallas_ops_tpu_v5e.md) — standalone matmul, fused matmul+RMSNorm, FlashAttention
+
+### 9.1 GPT-2 small layer shapes (benchmark 001)
 
 **Setup:** GPT-2 small (117M) layer shapes, JAX 0.6.2, TPU v5e, 30 runs, minimum latency.
 
@@ -495,6 +500,26 @@ To reproduce:
 
 ```bash
 PYTHONUTF8=1 uv run python scripts/benchmark_gpt2.py
+```
+
+### 9.2 Pallas op coverage (benchmark 002)
+
+**Setup:** TPU v5litepod-1 (1 TensorCore, 16 MiB VMEM), JAX 0.6.2, 5 warmup + 50
+measured iterations, median latency.
+
+| Section | Result | Detail |
+|---|---|---|
+| Standalone MatMul | Parity | 0.96–1.00× of XLA across all five GPT-2 shapes |
+| Fused MatMul + RMSNorm | **Win** | up to **1.11×** at batch 8192 — the float32 intermediate never touches HBM |
+| FlashAttention | Mixed | 1.03–1.05× at short sequence; **slower for seq ≥ 2048** |
+
+The honest read across both runs: this pipeline does **not** beat XLA at plain
+matmul, and net model-level speedup on GPT-2 small is ~0.97×. It wins where XLA
+cannot cross-fuse — fused normalization, and short-sequence attention. The
+FlashAttention regression at long sequence is reported, not hidden.
+
+```bash
+PYTHONUTF8=1 uv run python benchmarks/benchmark_002_pallas_ops_tpu_v5e.py
 ```
 
 ---
